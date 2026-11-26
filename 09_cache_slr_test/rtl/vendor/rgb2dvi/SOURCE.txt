@@ -1,0 +1,10 @@
+Digilent rgb2dvi v1.4 (BSD 3-clause, see the license header in each .vhd).
+Copied UNMODIFIED from
+  ~ejr/fPROJ/vid_example/ip_repo/rgb2dvi/src/   (UBU24)
+which is the ip_repo from Xilinx XVES_0023 ("Video Series 23: Generate a
+video output on Pynq-Z2 HDMI out", ~ejr/fPROJ/vid_example/XVES_0023.zip).
+Same RTL is in ~ejr/fPROJ/vid_example/minvideo (a PS7+MMCM+rgb2dvi project
+that was built for the PYNQ-Z2 in Vivado 2024.2).
+Only the .vhd files and rgb2dvi.xdc are copied (not ClockGen's use: 07 sets
+kGenerateSerialClk=false, so ClockGen is elaborated but unused).
+MD5SUMS lists the copied files.

@@ -15,6 +15,7 @@ mini-project; build and simulate from inside it.
 | `06_request_controller_arb_test/` | 05 plus the proj150 `mig_caf`/`mig_wdf`/`mig_rdf` FIFOs between the unmodified `RequestController` and the AXI master (`rc_axi_fifo_adapter`): up to 8 writes and 8 reads in flight, plus a streaming-read mode (`B`). Hardware PASS: write 609 MB/s, streaming read 528 MB/s, dcache-port read 54 MB/s. |
 | `07_hdmi_test_pattern/` | 640x480@60 HDMI colour-bar test pattern on the HDMI OUT port (Digilent rgb2dvi, own MMCM and timing). No DDR. `make overlay` builds a PS7 overlay. Verified on the PYNQ-Z2 via the capture dongle. |
 | `08_hdmi_cs150_mode/` | 800x600@60 (cs150/proj150 mode, 40.000 MHz exact) HDMI. Stage 1: test pattern. Stage 2: proj150 `PixelFeeder` + pixel FIFO as a RequestController client (pixf) feeding HDMI from DDR (frames at BASE+N*4 MiB); a UART state machine draws clear/fill/bars/checker/gradient/grid through the dcache port. `make sim`/`make overlay` (framebuffer), `sim-pattern`/`overlay-pattern` (pattern). Verified on the PYNQ-Z2 via the capture dongle. |
+| `09_cache_slr_test/` | 08 plus the cs150 ICache/DCache (write-through `Cache.v`) and the proj150 ScanLineRunner as RequestController clients, all driven by ASCII UART commands (R/W/J/D/E/O/M/L/Y); adapter carries the address-conflict patch (patches/0001) instead of the read/write barrier. `make sim` (core + hazard), `make overlay`. Verified on the PYNQ-Z2 (caches, 2,050 hazard runs, SLR spans, captures). |
 
 Examples:
 
@@ -36,6 +37,8 @@ make -C 08_hdmi_cs150_mode overlay
 make -C 08_hdmi_cs150_mode sim-pattern
 make -C 08_hdmi_cs150_mode overlay-pattern
 make -C 08_hdmi_cs150_mode sim-tmds
+make -C 09_cache_slr_test sim
+make -C 09_cache_slr_test overlay
 ```
 
 There is no `program` target. Do not program the Arty or the XUPV5.
