@@ -1,4 +1,4 @@
-# PROMPT_LOG — 1_uart_buffer_test
+# PROMPT_LOG — 01_uart_buffer_test
 
 Condensed, AI-readable brief for regenerating this mini-project.
 

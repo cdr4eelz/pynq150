@@ -1,4 +1,4 @@
-# 1_uart_buffer_test constraints for the PYNQ-Z2 (xc7z020clg400-1).
+# 01_uart_buffer_test constraints for the PYNQ-Z2 (xc7z020clg400-1).
 #
 # Pin assignments are taken from the official TUL PYNQ-Z2 Master XDC,
 # PYNQ-Z2v1.0.xdc (also the file linked as "Master XDC" on

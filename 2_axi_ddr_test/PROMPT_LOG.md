@@ -17,7 +17,7 @@ A UART-driven 64-bit AXI4 master DDR test on the PYNQ-Z2. Sequence:
 ## Context
 
 - Repo: `/home/ejr/pynq150`, branch `jtag-axi-ddr-test` (HEAD `6255d8e`).
-- Companion: `../1_uart_buffer_test/` (UART buffer replay, no AXI).
+- Companion: `../01_uart_buffer_test/` (UART buffer replay, no AXI).
 - Do **not** modify `../jtag_axi_ddr_test/`. `build_uart_axi.tcl` /
   `build.tcl` is a derived copy of that JTAG-to-AXI BD script, with the
   custom master added and JTAG-to-AXI kept as a second SmartConnect slave

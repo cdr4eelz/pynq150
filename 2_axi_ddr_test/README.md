@@ -1,7 +1,7 @@
 # 2_axi_ddr_test
 
 UART-driven AXI4 master DDR test for the PYNQ-Z2. A companion to
-`1_uart_buffer_test/`. The existing `jtag_axi_ddr_test/` folder is left
+`01_uart_buffer_test/`. The existing `jtag_axi_ddr_test/` folder is left
 untouched; `build_uart_axi.tcl` is a derived copy of that BD script with
 the custom master added.
 

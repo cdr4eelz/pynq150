@@ -31,7 +31,7 @@ VIVADO_BAT := $(VIVADO) -mode batch -notrace -nojournal
 all: sim
 
 help:
-	@echo "1_uart_buffer_test  (PL-only 256-byte UART buffer replay)"
+	@echo "01_uart_buffer_test  (PL-only 256-byte UART buffer replay)"
 	@echo "  make sim    Icarus test: send 256 bytes, check in-order replay"
 	@echo "  make bit    optional Vivado 2019.1 bitstream (does NOT program)"
 	@echo "  make clean  remove sim and build products"

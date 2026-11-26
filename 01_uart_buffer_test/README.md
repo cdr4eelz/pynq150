@@ -1,4 +1,4 @@
-# 1_uart_buffer_test
+# 01_uart_buffer_test
 
 PL-only 256-byte UART buffer test for the PYNQ-Z2. It is a standalone
 folder; the original `rtl/pynq150_top.v`, `sim/tb_uart_echo.v` and root

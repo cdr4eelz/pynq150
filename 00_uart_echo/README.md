@@ -2,7 +2,7 @@
 
 The original **PL-only UART echo** mini-project for the **PYNQ-Z2**
 (`xc7z020clg400-1`). These files used to live at the repo root; they were
-moved here so `1_uart_buffer_test/` and `2_axi_ddr_test/` can sit beside
+moved here so `01_uart_buffer_test/` and `2_axi_ddr_test/` can sit beside
 it. Run `make sim` or `make bit` from this folder. The UART PHY in
 `rtl/uart_rx.v` and `rtl/uart_tx.v` is also reused by those later tests.
 It is a standalone design, not a fork or copy of proj150.

@@ -16,7 +16,7 @@ through `clk_wiz_0`.
 - These files originally lived at the repo root and were moved into
   `00_uart_echo/` so later tests can sit beside them. The UART PHY
   (`rtl/uart_rx.v`, `rtl/uart_tx.v`) is reused by
-  `../1_uart_buffer_test/` and `../2_axi_ddr_test/` via relative paths
+  `../01_uart_buffer_test/` and `../2_axi_ddr_test/` via relative paths
   (`../00_uart_echo/rtl/...`). Do not copy the PHY into those folders.
 - `../jtag_axi_ddr_test/` is a separate JTAG-to-AXI HP0 demo and is not
   part of this echo design.

@@ -7,7 +7,7 @@ mini-project; build and simulate from inside it.
 | Folder | What it is |
 |--------|------------|
 | `00_uart_echo/` | Original PL-only UART echo loop on Pmod A (115200 8N1). |
-| `1_uart_buffer_test/` | 256-byte UART buffer: receive 256 bytes, then replay them. No AXI. |
+| `01_uart_buffer_test/` | 256-byte UART buffer: receive 256 bytes, then replay them. No AXI. |
 | `2_axi_ddr_test/` | UART-driven 64-bit AXI4 master: write 256 bytes to DDR via HP0, read back, compare, report PASS/FAIL. |
 | `jtag_axi_ddr_test/` | JTAG-to-AXI demonstration of HP0 DDR read/write. |
 
@@ -15,7 +15,7 @@ Examples:
 
 ```
 make -C 00_uart_echo sim
-make -C 1_uart_buffer_test sim
+make -C 01_uart_buffer_test sim
 make -C 2_axi_ddr_test sim
 ```
 
