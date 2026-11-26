@@ -1,0 +1,13 @@
+# Vivado / Icarus build products
+build/
+.Xil/
+*.jou
+*.log
+*.str
+*.vcd
+*.vvp
+webtalk*
+vivado_*.backup.log
+.cache/
+*.pb
+hs_err_pid*
