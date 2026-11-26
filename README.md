@@ -12,6 +12,7 @@ mini-project; build and simulate from inside it.
 | `03_axi_ddr_test/` | UART-driven 64-bit AXI4 master: write 256 bytes to DDR via HP0, read back, compare, report PASS/FAIL. |
 | `04_uart_ddr_block_test/` | Single UART characters trigger a full-speed PL-generated 1 MiB DDR write (`W`) and read+compare (`R` -> `P`/`F`) over HP0. |
 | `05_request_controller_test/` | Verbatim cs150 `RequestController` with a fake dcache client; `rc_axi_adapter` replaces MIG and masters AXI4 on HP0. UART `G` writes and reads 1 MiB through the dcache port -> `P`/`F`. |
+| `06_request_controller_arb_test/` | 05 plus the proj150 `mig_caf`/`mig_wdf`/`mig_rdf` FIFOs between the unmodified `RequestController` and the AXI master (`rc_axi_fifo_adapter`): up to 8 writes and 8 reads in flight, plus a streaming-read mode (`B`). Hardware PASS: write 609 MB/s, streaming read 528 MB/s, dcache-port read 54 MB/s. |
 
 Examples:
 
