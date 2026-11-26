@@ -17,6 +17,9 @@ SIM_VVP  := sim/tb_uart_buffer.vvp
 BUILD   := build
 LOGDIR  := $(BUILD)/logs
 BIT     := $(BUILD)/uart_buffer.bit
+OVERLAY_DIR := $(BUILD)/overlay
+OVERLAY_BIT := $(OVERLAY_DIR)/uart_buffer.bit
+OVERLAY_HWH := $(OVERLAY_DIR)/uart_buffer.hwh
 IP_TCL  := $(REPO)/01_uart_echo/ip/clk_wiz_0.tcl
 IP_DIR  := $(BUILD)/ip
 IP_SRCS := $(IP_DIR)/sources.f
@@ -26,15 +29,16 @@ XDC     := constr/pynq_z2.xdc
 
 VIVADO_BAT := $(VIVADO) -mode batch -notrace -nojournal
 
-.PHONY: all help sim bit clean
+.PHONY: all help sim bit overlay clean
 
 all: sim
 
 help:
 	@echo "02_uart_buffer_test  (PL-only 256-byte UART buffer replay)"
 	@echo "  make sim    Icarus test: send 256 bytes, check in-order replay"
-	@echo "  make bit    optional Vivado 2019.1 bitstream (does NOT program)"
-	@echo "  make clean  remove sim and build products"
+	@echo "  make bit      optional PL-only bitstream (does NOT program)"
+	@echo "  make overlay  PS7+UART Overlay -> build/overlay/uart_buffer.bit + .hwh"
+	@echo "  make clean    remove sim and build products"
 
 sim: $(SIM_VVP)
 	vvp $(SIM_VVP)
@@ -54,6 +58,16 @@ bit: $(IP_STAMP) $(RTL) $(XDC)
 	$(VIVADO_BAT) -log $(LOGDIR)/bit.log -source scripts/build_pl.tcl \
 		-tclargs $(PART) $(TOP) $(abspath $(BUILD)) $(abspath $(XDC)) \
 		$(abspath $(IP_SRCS)) $(abspath $(RTL))
+
+# Overlay: dummy PS7 (board preset, no AXI) + existing uart_buffer_top.
+# Use this to load from Linux with PYNQ Overlay; the PL-only `bit` target
+# can freeze Linux. Does not program a board.
+overlay: $(OVERLAY_BIT)
+
+$(OVERLAY_BIT): $(RTL) rtl/uart_buffer_overlay_top.v $(XDC) scripts/build_overlay.tcl
+	@mkdir -p $(OVERLAY_DIR) $(LOGDIR)
+	$(VIVADO_BAT) -log $(LOGDIR)/overlay.log -source scripts/build_overlay.tcl
+	@test -s $(OVERLAY_BIT) && test -s $(OVERLAY_HWH)
 
 clean:
 	rm -rf $(BUILD) .Xil
