@@ -9,6 +9,9 @@ VIVADO  ?= /tools/Xilinx/Vivado/2019.1/bin/vivado
 BUILD   := build
 LOGDIR  := $(BUILD)/logs
 BIT     := $(BUILD)/pynq150.bit
+OVERLAY_DIR := $(BUILD)/overlay
+OVERLAY_BIT := $(OVERLAY_DIR)/uart_echo.bit
+OVERLAY_HWH := $(OVERLAY_DIR)/uart_echo.hwh
 
 # TIMING_GATE=0 writes the bitstream even if slack is negative.
 TIMING_GATE ?= 1
@@ -31,7 +34,7 @@ SIM_TOP  := tb_uart_echo
 SIM_SRCS := rtl/uart_rx.v rtl/uart_tx.v rtl/uart_echo.v sim/tb_uart_echo.v
 SIM_VVP  := sim/tb_uart_echo.vvp
 
-.PHONY: all help ip synth impl bit timing sim clean
+.PHONY: all help ip synth impl bit overlay timing sim clean
 
 # Default: bitstream plus a printed timing summary.
 all: bit timing
@@ -45,7 +48,8 @@ help:
 	@echo "  make ip       generate clk_wiz_0 (125 MHz MMCM)"
 	@echo "  make synth    synthesis  -> $(SYNTH_DCP)"
 	@echo "  make impl     place/route -> $(IMPL_DCP)"
-	@echo "  make bit      write $(BIT) (refuses if timing fails)"
+	@echo "  make bit      write $(BIT) (PL-only, no PS; refuses if timing fails)"
+	@echo "  make overlay  PS7+UART Overlay -> $(OVERLAY_BIT) + .hwh"
 	@echo "  make timing   print WNS/WHS from the route checkpoint"
 	@echo "  make sim      Icarus Verilog test of the UART echo loop"
 	@echo "  make clean    remove build/ and sim products"
@@ -86,6 +90,16 @@ $(BIT): $(IMPL_DCP) scripts/bit.tcl scripts/common.tcl
 	@mkdir -p $(LOGDIR)
 	$(VIVADO_BAT) -log $(LOGDIR)/bit.log -source scripts/bit.tcl \
 		-tclargs $(abspath $(IMPL_DCP)) $(abspath $(BIT)) $(TIMING_GATE)
+
+# Overlay: dummy PS7 (board preset, no AXI) + existing pynq150_top.
+# Use this to load from Linux with PYNQ Overlay; the PL-only `bit` target
+# can freeze Linux. Does not program a board.
+overlay: $(OVERLAY_BIT)
+
+$(OVERLAY_BIT): $(RTL) rtl/uart_echo_overlay_top.v $(XDC) $(IP_TCL) scripts/build_overlay.tcl
+	@mkdir -p $(OVERLAY_DIR) $(LOGDIR)
+	$(VIVADO_BAT) -log $(LOGDIR)/overlay.log -source scripts/build_overlay.tcl
+	@test -s $(OVERLAY_BIT) && test -s $(OVERLAY_HWH)
 
 timing: $(IMPL_DCP) scripts/timing.tcl scripts/common.tcl
 	@mkdir -p $(LOGDIR)

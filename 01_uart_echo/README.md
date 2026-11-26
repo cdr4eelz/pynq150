@@ -7,12 +7,15 @@ it. Run `make sim` or `make bit` from this folder. The UART PHY in
 `rtl/uart_rx.v` and `rtl/uart_tx.v` is also reused by those later tests.
 It is a standalone design, not a fork or copy of proj150.
 
-The first test is a **PL-only UART echo loop** on **Pmod A**, plus a heartbeat
-LED and an LED that toggles on each received byte. The Zynq PS is not used
-yet, so the design is meant to be configured over **JTAG** (set the board's
-boot jumper JP4 to JTAG). The onboard USB-UART is wired to the PS, not the
-PL; a later revision can bring up the PS and use that port, or reuse this
-UART as a debug console for a soft core.
+The first test is a **UART echo loop** on **Pmod A**, plus a heartbeat LED
+and an LED that toggles on each received byte. The UART itself still clocks
+from the 125 MHz board oscillator through `clk_wiz_0` (baud divisor 1085).
+`make overlay` wraps that existing top in a block design with a **dummy
+ZYNQ7 PS** (PYNQ-Z2 board preset, DDR + FIXED_IO, no AXI) so the design can
+be loaded from Linux with PYNQ's `Overlay` class without taking the PS down.
+A PL-only bitstream (`make bit`) has no `.hwh` and has frozen Linux when
+loaded. The onboard USB-UART is wired to the PS, not the PL; this test uses
+the Pmod USBUART on JA.
 
 ## Layout
 
@@ -27,7 +30,7 @@ UART as a debug console for a soft core.
   rtl/uart_echo.v       RX-to-TX echo with a one-byte hold register
   rtl/uart_rx.v         hand-written 115200 8N1 receiver
   rtl/uart_tx.v         hand-written 115200 8N1 transmitter
-  scripts/*.tcl         ip, synth, impl, bit, timing
+  scripts/*.tcl         ip, synth, impl, bit, timing, build_overlay
   sim/tb_uart_echo.v    Icarus testbench for the echo loop
   build/                Vivado outputs (gitignored)
 ```
@@ -92,41 +95,55 @@ Override with `VIVADO=/other/path/vivado` if needed.
 ```
 make help      # list targets
 make sim       # Icarus echo-loop test (no Vivado)
-make bit       # IP + synth + impl + bitstream  -> build/pynq150.bit
+make bit       # PL-only bitstream (no PS) -> build/pynq150.bit
+make overlay   # dummy PS7 Overlay        -> build/overlay/uart_echo.bit + .hwh
 make timing    # print WNS/WHS from the route checkpoint
 make clean
 ```
 
 `make` / `make all` is `bit` plus `timing`. `make bit` refuses to write the
 bitstream if setup or hold slack is negative; pass `TIMING_GATE=0` to
-override.
+override. Use **`make overlay`** to run this test on a PYNQ that is already
+booted into Linux.
 
-There is **no `program` target**. Do not program the Arty or the XUPV5 from
-this machine's hardware server. When you are ready to try this design on a
-PYNQ-Z2, configure the PL over JTAG with the usual Vivado hardware manager
-flow, with JP4 in JTAG mode, and with no other board selected.
+There is **no `program` target**. Do not program the Arty or the XUPV5.
+Do not `program_hw_devices` on the PYNQ while Linux is running; that has
+frozen the board. Load the Overlay from Linux instead.
 
-If the PL does not come up over JTAG, the next step is usually to confirm
-the boot-mode jumper and, if needed, add a minimal PS initialization block
-(future work).
+## Load and test (PYNQ Overlay)
 
-## Testing with a terminal
+On UBU24, from this folder:
 
-1. Build `build/pynq150.bit` and configure the PYNQ-Z2 over JTAG.
-2. Confirm LD2 (locked) is on and LD0 is blinking.
-3. Connect the Pmod USBUART to a host USB port.
-4. Open a serial terminal at **115200 8N1**, no flow control, for example:
+```
+make overlay
+```
 
-   ```
-   picocom -b 115200 /dev/ttyUSB0
-   # or:  python3 -m serial.tools.miniterm /dev/ttyUSB0 115200
-   ```
+Copy `build/overlay/uart_echo.bit` and `build/overlay/uart_echo.hwh` (same
+basename) to the board, for example `/home/xilinx/uart_tests/`. SSH as
+`xilinx` (default password `xilinx`). Then on the board, with sudo and the
+PYNQ environment:
 
-   The adapter may appear as `/dev/ttyUSB0`, `/dev/ttyUSB1`, or a
-   `/dev/ttyACM*` device; check `dmesg` after plugging it in.
-5. Characters typed in the terminal should echo back, and LD1 should toggle
-   on each received byte. BTN0 holds the design in reset (line idle, LEDs
-   off except that LD2 may drop if the MMCM is reset).
+```
+source /etc/profile.d/boardname.sh
+source /etc/profile.d/xrt_setup.sh
+source /etc/profile.d/pynq_venv.sh
+python3 -c "from pynq import Overlay; Overlay('/home/xilinx/uart_tests/uart_echo.bit')"
+```
+
+Confirm ping and SSH still work after the load. Then on the host, open the
+Pmod USBUART at **115200 8N1**, no flow control (usually `/dev/ttyUSB3`):
+
+```
+python3 -m serial.tools.miniterm /dev/ttyUSB3 115200
+```
+
+Characters should echo back, and LD1 should toggle on each received byte.
+A short string should match exactly. A 1024-byte burst may drop about one
+or two bytes (the echo path has only a one-byte hold register). BTN0 holds
+the design in reset. LD2 is MMCM locked; LD0 is the heartbeat.
+
+The PL-only `make bit` bitstream has no `.hwh` and is not safe to load
+while Linux is running.
 
 ## Future work
 
