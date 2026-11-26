@@ -1,0 +1,6 @@
+*.vvp
+*.vcd
+*.jou
+*.log
+.Xil/
+build/
