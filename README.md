@@ -14,6 +14,7 @@ mini-project; build and simulate from inside it.
 | `05_request_controller_test/` | Verbatim cs150 `RequestController` with a fake dcache client; `rc_axi_adapter` replaces MIG and masters AXI4 on HP0. UART `G` writes and reads 1 MiB through the dcache port -> `P`/`F`. |
 | `06_request_controller_arb_test/` | 05 plus the proj150 `mig_caf`/`mig_wdf`/`mig_rdf` FIFOs between the unmodified `RequestController` and the AXI master (`rc_axi_fifo_adapter`): up to 8 writes and 8 reads in flight, plus a streaming-read mode (`B`). Hardware PASS: write 609 MB/s, streaming read 528 MB/s, dcache-port read 54 MB/s. |
 | `07_hdmi_test_pattern/` | 640x480@60 HDMI colour-bar test pattern on the HDMI OUT port (Digilent rgb2dvi, own MMCM and timing). No DDR. `make overlay` builds a PS7 overlay. Verified on the PYNQ-Z2 via the capture dongle. |
+| `08_hdmi_cs150_mode/` | 800x600@60 (cs150/proj150 mode, 40.000 MHz exact) HDMI. Stage 1: test pattern. Stage 2: proj150 `PixelFeeder` + pixel FIFO as a RequestController client (pixf) feeding HDMI from DDR (frames at BASE+N*4 MiB); a UART state machine draws clear/fill/bars/checker/gradient/grid through the dcache port. `make sim`/`make overlay` (framebuffer), `sim-pattern`/`overlay-pattern` (pattern). Verified on the PYNQ-Z2 via the capture dongle. |
 
 Examples:
 
@@ -30,6 +31,11 @@ make -C 05_request_controller_test overlay
 make -C 07_hdmi_test_pattern sim
 make -C 07_hdmi_test_pattern sim-tmds
 make -C 07_hdmi_test_pattern overlay
+make -C 08_hdmi_cs150_mode sim              # framebuffer
+make -C 08_hdmi_cs150_mode overlay
+make -C 08_hdmi_cs150_mode sim-pattern
+make -C 08_hdmi_cs150_mode overlay-pattern
+make -C 08_hdmi_cs150_mode sim-tmds
 ```
 
 There is no `program` target. Do not program the Arty or the XUPV5.
