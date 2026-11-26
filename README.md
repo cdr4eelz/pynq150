@@ -16,6 +16,7 @@ mini-project; build and simulate from inside it.
 | `07_hdmi_test_pattern/` | 640x480@60 HDMI colour-bar test pattern on the HDMI OUT port (Digilent rgb2dvi, own MMCM and timing). No DDR. `make overlay` builds a PS7 overlay. Verified on the PYNQ-Z2 via the capture dongle. |
 | `08_hdmi_cs150_mode/` | 800x600@60 (cs150/proj150 mode, 40.000 MHz exact) HDMI. Stage 1: test pattern. Stage 2: proj150 `PixelFeeder` + pixel FIFO as a RequestController client (pixf) feeding HDMI from DDR (frames at BASE+N*4 MiB); a UART state machine draws clear/fill/bars/checker/gradient/grid through the dcache port. `make sim`/`make overlay` (framebuffer), `sim-pattern`/`overlay-pattern` (pattern). Verified on the PYNQ-Z2 via the capture dongle. |
 | `09_cache_slr_test/` | 08 plus the cs150 ICache/DCache (write-through `Cache.v`) and the proj150 ScanLineRunner as RequestController clients, all driven by ASCII UART commands (R/W/J/D/E/O/M/L/Y); adapter carries the address-conflict patch (patches/0001) instead of the read/write barrier. `make sim` (core + hazard), `make overlay`. Verified on the PYNQ-Z2 (caches, 2,050 hazard runs, SLR spans, captures). |
+| `10_rc_50mhz/` | 09 with the RequestController, caches, drawer, SLR, PixelFeeder memory side and UART on FCLK1 = 50 MHz (UART divisor 434) and HP0/adapter AXI side on FCLK0 = 100 MHz. Runs **without Linux**: PYNQ-Z2 boot jumper in **JTAG** mode (not SD-card boot), loaded by `xsct jtag_boot.tcl` (ps7_init, fpga, ps7_post_config), fixed DDR base 0x10000000. `make sim` (core, hazard, mixed, throughput), `make overlay`. Verified on the PYNQ-Z2. |
 
 Examples:
 
@@ -39,6 +40,8 @@ make -C 08_hdmi_cs150_mode overlay-pattern
 make -C 08_hdmi_cs150_mode sim-tmds
 make -C 09_cache_slr_test sim
 make -C 09_cache_slr_test overlay
+make -C 10_rc_50mhz sim
+make -C 10_rc_50mhz overlay                 # then: xsct 10_rc_50mhz/jtag_boot.tcl (JTAG boot mode)
 ```
 
 There is no `program` target. Do not program the Arty or the XUPV5.

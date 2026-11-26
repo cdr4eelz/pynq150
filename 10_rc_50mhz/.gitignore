@@ -1,0 +1,14 @@
+*.vvp
+*.vcd
+*.jou
+*.log
+*.pb
+.Xil/
+NA/
+build/
+sim/xsim/
+xsim.dir/
+webtalk*
+capture/
+__pycache__/
+sim/adapter_nohz.v
