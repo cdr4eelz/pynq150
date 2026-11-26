@@ -1,4 +1,4 @@
-# PROMPT_LOG — 01_uart_buffer_test
+# PROMPT_LOG — 02_uart_buffer_test
 
 Condensed, AI-readable brief for regenerating this mini-project.
 
@@ -13,12 +13,12 @@ accepted.
 ## Context
 
 - Repo: `/home/ejr/pynq150`, branch `jtag-axi-ddr-test` (HEAD `6255d8e`).
-- Companion project: `../2_axi_ddr_test/` (UART + AXI4 master to HP0 DDR).
+- Companion project: `../03_axi_ddr_test/` (UART + AXI4 master to HP0 DDR).
 - The original root `rtl/pynq150_top.v`, `rtl/uart_echo.v`, `sim/tb_uart_echo.v`,
   `Makefile` and `README.md` are left unchanged. This folder is standalone.
-- UART PHY is reused, not copied: `../00_uart_echo/rtl/uart_rx.v`, `../00_uart_echo/rtl/uart_tx.v`.
+- UART PHY is reused, not copied: `../01_uart_echo/rtl/uart_rx.v`, `../01_uart_echo/rtl/uart_tx.v`.
 - Board clock: 125 MHz `sysclk` (H16) through the repo `clk_wiz_0` MMCM
-  (`../00_uart_echo/ip/clk_wiz_0.tcl`). Baud divisor `125_000_000 / 115200 = 1085`.
+  (`../01_uart_echo/ip/clk_wiz_0.tcl`). Baud divisor `125_000_000 / 115200 = 1085`.
 - Icarus testbench runs the DUT at 10 MHz (still 115200 8N1) so the test
   finishes quickly, matching the root `tb_uart_echo.v` approach.
 - Pmod USBUART on Pmod A, top row; Pmod JP1 = LCL.
@@ -37,8 +37,8 @@ accepted.
 | `.gitignore` | Ignores `*.vvp`, `*.vcd`, `.Xil/`, `build/`. |
 | `PROMPT_LOG.md` | This file. |
 
-Reused (not in this folder): `../00_uart_echo/rtl/uart_rx.v`, `../00_uart_echo/rtl/uart_tx.v`,
-`../00_uart_echo/ip/clk_wiz_0.tcl`, `../00_uart_echo/scripts/ip.tcl`.
+Reused (not in this folder): `../01_uart_echo/rtl/uart_rx.v`, `../01_uart_echo/rtl/uart_tx.v`,
+`../01_uart_echo/ip/clk_wiz_0.tcl`, `../01_uart_echo/scripts/ip.tcl`.
 
 ## Design Decisions
 
@@ -67,7 +67,7 @@ From this directory: `make sim`
 
 ```
 iverilog -g2005 -o sim/tb_uart_buffer.vvp -s tb_uart_buffer \
-    rtl/uart_buffer.v ../00_uart_echo/rtl/uart_rx.v ../00_uart_echo/rtl/uart_tx.v sim/tb_uart_buffer.v
+    rtl/uart_buffer.v ../01_uart_echo/rtl/uart_rx.v ../01_uart_echo/rtl/uart_tx.v sim/tb_uart_buffer.v
 vvp sim/tb_uart_buffer.vvp
 ```
 
@@ -83,5 +83,5 @@ Optional hardware: `make bit` writes `build/uart_buffer.bit`. There is no
 ## Open Items
 
 - No on-board run of this PL-only design yet (the hardware effort is on
-  `2_axi_ddr_test`).
+  `03_axi_ddr_test`).
 - Optional bitstream has not been built.

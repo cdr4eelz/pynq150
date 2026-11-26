@@ -1,5 +1,5 @@
 # Build the UART-AXI DDR test bitstream (PS7 + SmartConnect + custom master).
-# Derived from jtag_axi_ddr_test/build.tcl (that folder is not modified).
+# Derived from 00_jtag_axi_ddr_test/build.tcl (that folder is not modified).
 # JTAG-to-AXI is kept as a second SmartConnect slave for debug.
 # Outputs go to <repo>/build/uart_axi_ddr (gitignored).
 # Does not program a board.
@@ -13,10 +13,10 @@ puts "BOARD_PART: $bp"
 set_property board_part $bp [current_project]
 
 add_files -norecurse [list \
-    [file join $repo 00_uart_echo rtl uart_rx.v] \
-    [file join $repo 00_uart_echo rtl uart_tx.v] \
-    [file join $repo 2_axi_ddr_test rtl uart_axi_ddr_test.v] \
-    [file join $repo 2_axi_ddr_test rtl uart_axi_top.v]]
+    [file join $repo 01_uart_echo rtl uart_rx.v] \
+    [file join $repo 01_uart_echo rtl uart_tx.v] \
+    [file join $repo 03_axi_ddr_test rtl uart_axi_ddr_test.v] \
+    [file join $repo 03_axi_ddr_test rtl uart_axi_top.v]]
 update_compile_order -fileset sources_1
 
 create_bd_design uart_axi_ddr
@@ -72,7 +72,7 @@ save_bd_design
 
 make_wrapper -files [get_files uart_axi_ddr.bd] -top
 add_files -norecurse [glob $d/proj/uart_axi_ddr.srcs/sources_1/bd/uart_axi_ddr/hdl/uart_axi_ddr_wrapper.v]
-add_files -fileset constrs_1 [file join $repo 2_axi_ddr_test constr pynq_z2_uart_axi.xdc]
+add_files -fileset constrs_1 [file join $repo 03_axi_ddr_test constr pynq_z2_uart_axi.xdc]
 set_property top uart_axi_ddr_wrapper [current_fileset]
 generate_target all [get_files uart_axi_ddr.bd]
 launch_runs impl_1 -to_step write_bitstream -jobs 8

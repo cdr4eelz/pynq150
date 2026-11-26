@@ -1,4 +1,4 @@
-# PROMPT_LOG — 00_uart_echo
+# PROMPT_LOG — 01_uart_echo
 
 Condensed, AI-readable brief for regenerating this mini-project.
 
@@ -14,11 +14,11 @@ through `clk_wiz_0`.
 
 - Repo: `/home/ejr/pynq150`, branch `jtag-axi-ddr-test`.
 - These files originally lived at the repo root and were moved into
-  `00_uart_echo/` so later tests can sit beside them. The UART PHY
+  `01_uart_echo/` so later tests can sit beside them. The UART PHY
   (`rtl/uart_rx.v`, `rtl/uart_tx.v`) is reused by
-  `../01_uart_buffer_test/` and `../2_axi_ddr_test/` via relative paths
-  (`../00_uart_echo/rtl/...`). Do not copy the PHY into those folders.
-- `../jtag_axi_ddr_test/` is a separate JTAG-to-AXI HP0 demo and is not
+  `../02_uart_buffer_test/` and `../03_axi_ddr_test/` via relative paths
+  (`../01_uart_echo/rtl/...`). Do not copy the PHY into those folders.
+- `../00_jtag_axi_ddr_test/` is a separate JTAG-to-AXI HP0 demo and is not
   part of this echo design.
 - Icarus testbench runs the DUT at 10 MHz (still 115200 8N1) so the test
   finishes quickly; the host uses a matching bit period.
@@ -72,7 +72,7 @@ A one-byte hold register absorbs one byte that arrives while TX is busy.
 
 ## Test Plan
 
-From this directory (or `make -C 00_uart_echo sim` from the repo root):
+From this directory (or `make -C 01_uart_echo sim` from the repo root):
 
 ```
 make sim
@@ -107,4 +107,4 @@ should echo and LD1 should toggle.
   described correctly. Leave the README typo unless a later change
   specifically fixes it.
 - The Zynq PS is unused in this design. A later test
-  (`../2_axi_ddr_test/`) brings up PS7 and HP0.
+  (`../03_axi_ddr_test/`) brings up PS7 and HP0.

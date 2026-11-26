@@ -1,4 +1,4 @@
-# PROMPT_LOG — 2_axi_ddr_test
+# PROMPT_LOG — 03_axi_ddr_test
 
 Condensed, AI-readable brief for regenerating this mini-project.
 
@@ -17,12 +17,12 @@ A UART-driven 64-bit AXI4 master DDR test on the PYNQ-Z2. Sequence:
 ## Context
 
 - Repo: `/home/ejr/pynq150`, branch `jtag-axi-ddr-test` (HEAD `6255d8e`).
-- Companion: `../01_uart_buffer_test/` (UART buffer replay, no AXI).
-- Do **not** modify `../jtag_axi_ddr_test/`. `build_uart_axi.tcl` /
+- Companion: `../02_uart_buffer_test/` (UART buffer replay, no AXI).
+- Do **not** modify `../00_jtag_axi_ddr_test/`. `build_uart_axi.tcl` /
   `build.tcl` is a derived copy of that JTAG-to-AXI BD script, with the
   custom master added and JTAG-to-AXI kept as a second SmartConnect slave
   for debug.
-- UART PHY is reused, not copied: `../00_uart_echo/rtl/uart_rx.v`, `../00_uart_echo/rtl/uart_tx.v`.
+- UART PHY is reused, not copied: `../01_uart_echo/rtl/uart_rx.v`, `../01_uart_echo/rtl/uart_tx.v`.
 - Clock is PS `FCLK_CLK0` at 100 MHz (baud divisor `100_000_000/115200 = 868`).
   There is no MMCM in this top; LD2 is "FCLK alive / out of reset".
 - Load the bitstream with PYNQ `Overlay` from Linux, **not** over JTAG
@@ -121,7 +121,7 @@ From this directory: `make sim`
 
 ```
 iverilog -g2005 -o sim/tb_uart_axi_ddr.vvp -s tb_uart_axi_ddr \
-    rtl/uart_axi_ddr_test.v ../00_uart_echo/rtl/uart_rx.v ../00_uart_echo/rtl/uart_tx.v \
+    rtl/uart_axi_ddr_test.v ../01_uart_echo/rtl/uart_rx.v ../01_uart_echo/rtl/uart_tx.v \
     sim/axi4_slave_mem.v sim/tb_uart_axi_ddr.v
 vvp sim/tb_uart_axi_ddr.vvp
 ```
@@ -140,7 +140,7 @@ Icarus 12 on UBU24 (2026-11-26): **ALL TESTS PASSED**
 Build (does not program):
 
 ```
-cd 2_axi_ddr_test
+cd 03_axi_ddr_test
 make bd
 # -> ../build/uart_axi_ddr/uart_axi_ddr.{bit,hwh,ltx} and util/timing reports
 ```
@@ -188,6 +188,6 @@ Then `touch /home/xilinx/uart_axi_ddr/check` (CPU invalidate + dump) and
 ## Open Items
 
 - No hardware FAIL-injection (skipped as not easy without a backdoor).
-- `jtag_axi_ddr_test/` is unchanged; JTAG-to-AXI remains available on the
+- `00_jtag_axi_ddr_test/` is unchanged; JTAG-to-AXI remains available on the
   same SmartConnect for debug but was not used by this UART test.
 - The board's own clock is wrong (it reported 2022-10-25).
