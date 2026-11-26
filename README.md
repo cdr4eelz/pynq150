@@ -11,6 +11,7 @@ mini-project; build and simulate from inside it.
 | `02_uart_buffer_test/` | 256-byte UART buffer replay. `make overlay` adds a dummy PS7 so it loads from Linux. |
 | `03_axi_ddr_test/` | UART-driven 64-bit AXI4 master: write 256 bytes to DDR via HP0, read back, compare, report PASS/FAIL. |
 | `04_uart_ddr_block_test/` | Single UART characters trigger a full-speed PL-generated 1 MiB DDR write (`W`) and read+compare (`R` -> `P`/`F`) over HP0. |
+| `05_request_controller_test/` | Verbatim cs150 `RequestController` with a fake dcache client; `rc_axi_adapter` replaces MIG and masters AXI4 on HP0. UART `G` writes and reads 1 MiB through the dcache port -> `P`/`F`. |
 
 Examples:
 
@@ -22,6 +23,8 @@ make -C 02_uart_buffer_test overlay
 make -C 03_axi_ddr_test sim
 make -C 04_uart_ddr_block_test sim
 make -C 04_uart_ddr_block_test overlay
+make -C 05_request_controller_test sim
+make -C 05_request_controller_test overlay
 ```
 
 There is no `program` target. Do not program the Arty or the XUPV5.
