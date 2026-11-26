@@ -100,4 +100,4 @@ $(SIM_VVP): $(SIM_SRCS)
 
 clean:
 	rm -rf $(BUILD) .Xil
-	rm -f $(SIM_VVP) sim/*.vcd *.jou *.log webtalk* vivado*.backup.log
+	rm -f $(SIM_VVP) sim/*.vcd *.jou *.log *webtalk* usage_statistics_* vivado*.backup.log

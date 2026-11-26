@@ -11,3 +11,5 @@ vivado_*.backup.log
 .cache/
 *.pb
 hs_err_pid*
+*webtalk*
+usage_statistics_*
