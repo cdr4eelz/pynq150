@@ -13,7 +13,7 @@ A small state machine (`rtl/uart_buffer.v`):
 3. Returns to receiving for the next 256-byte block.
 
 No AXI, no PS, no DDR. TX does not start until all 256 bytes have arrived.
-The UART PHY is the existing `../rtl/uart_rx.v` and `../rtl/uart_tx.v`
+The UART PHY is the existing `../00_uart_echo/rtl/uart_rx.v` and `../00_uart_echo/rtl/uart_tx.v`
 (referenced by relative path, not copied).
 
 `uart_buffer_top.v` is the board wrapper: 125 MHz `sysclk` through the
@@ -39,7 +39,7 @@ which is:
 
 ```
 iverilog -g2005 -o sim/tb_uart_buffer.vvp -s tb_uart_buffer \
-    rtl/uart_buffer.v ../rtl/uart_rx.v ../rtl/uart_tx.v sim/tb_uart_buffer.v
+    rtl/uart_buffer.v ../00_uart_echo/rtl/uart_rx.v ../00_uart_echo/rtl/uart_tx.v sim/tb_uart_buffer.v
 vvp sim/tb_uart_buffer.vvp
 ```
 
@@ -50,7 +50,7 @@ until the last RX byte, and checks that the replay is in order.
 ## Optional bitstream
 
 `make bit` builds a bitstream with Vivado 2019.1 into `build/uart_buffer.bit`
-using `../ip/clk_wiz_0.tcl` and `../scripts/ip.tcl`. It does **not**
+using `../00_uart_echo/ip/clk_wiz_0.tcl` and `../00_uart_echo/scripts/ip.tcl`. It does **not**
 program any board. There is no `program` target.
 
 Pmod USBUART wiring is the same as the root README (JA pin 2 = FPGA TX,

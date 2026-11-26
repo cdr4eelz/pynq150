@@ -2,7 +2,7 @@
 // Receive 256 bytes at 115200 8N1 into a local distributed-RAM buffer,
 // then play them back in order on the transmitter. After the last byte
 // is sent, return to receiving. No TX starts until all 256 bytes have
-// arrived. Reuses rtl/uart_rx.v and rtl/uart_tx.v.
+// arrived. Reuses ../00_uart_echo/rtl/uart_rx.v and ../00_uart_echo/rtl/uart_tx.v.
 module uart_buffer #(
     parameter CLK_FREQ = 125_000_000,
     parameter BAUD     = 115200,

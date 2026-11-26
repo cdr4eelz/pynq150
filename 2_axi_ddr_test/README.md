@@ -30,7 +30,7 @@ not used by this test.
    `MMM` is the mismatch count (hex, 000..100) and `II` is the first
    mismatched byte index. A non-OKAY AXI response also produces FAIL.
 
-The UART PHY is `../rtl/uart_rx.v` and `../rtl/uart_tx.v` (relative
+The UART PHY is `../00_uart_echo/rtl/uart_rx.v` and `../00_uart_echo/rtl/uart_tx.v` (relative
 path, not copied). The master connects to `S_AXI_HP0` (64-bit) through
 PS7 + SmartConnect. JTAG-to-AXI 1.2 is kept as a second SmartConnect
 slave for debug.
@@ -57,7 +57,7 @@ which is:
 
 ```
 iverilog -g2005 -o sim/tb_uart_axi_ddr.vvp -s tb_uart_axi_ddr \
-    rtl/uart_axi_ddr_test.v ../rtl/uart_rx.v ../rtl/uart_tx.v \
+    rtl/uart_axi_ddr_test.v ../00_uart_echo/rtl/uart_rx.v ../00_uart_echo/rtl/uart_tx.v \
     sim/axi4_slave_mem.v sim/tb_uart_axi_ddr.v
 vvp sim/tb_uart_axi_ddr.vvp
 ```

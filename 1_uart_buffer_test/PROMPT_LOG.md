@@ -16,9 +16,9 @@ accepted.
 - Companion project: `../2_axi_ddr_test/` (UART + AXI4 master to HP0 DDR).
 - The original root `rtl/pynq150_top.v`, `rtl/uart_echo.v`, `sim/tb_uart_echo.v`,
   `Makefile` and `README.md` are left unchanged. This folder is standalone.
-- UART PHY is reused, not copied: `../rtl/uart_rx.v`, `../rtl/uart_tx.v`.
+- UART PHY is reused, not copied: `../00_uart_echo/rtl/uart_rx.v`, `../00_uart_echo/rtl/uart_tx.v`.
 - Board clock: 125 MHz `sysclk` (H16) through the repo `clk_wiz_0` MMCM
-  (`../ip/clk_wiz_0.tcl`). Baud divisor `125_000_000 / 115200 = 1085`.
+  (`../00_uart_echo/ip/clk_wiz_0.tcl`). Baud divisor `125_000_000 / 115200 = 1085`.
 - Icarus testbench runs the DUT at 10 MHz (still 115200 8N1) so the test
   finishes quickly, matching the root `tb_uart_echo.v` approach.
 - Pmod USBUART on Pmod A, top row; Pmod JP1 = LCL.
@@ -37,8 +37,8 @@ accepted.
 | `.gitignore` | Ignores `*.vvp`, `*.vcd`, `.Xil/`, `build/`. |
 | `PROMPT_LOG.md` | This file. |
 
-Reused (not in this folder): `../rtl/uart_rx.v`, `../rtl/uart_tx.v`,
-`../ip/clk_wiz_0.tcl`, `../scripts/ip.tcl`.
+Reused (not in this folder): `../00_uart_echo/rtl/uart_rx.v`, `../00_uart_echo/rtl/uart_tx.v`,
+`../00_uart_echo/ip/clk_wiz_0.tcl`, `../00_uart_echo/scripts/ip.tcl`.
 
 ## Design Decisions
 
@@ -67,7 +67,7 @@ From this directory: `make sim`
 
 ```
 iverilog -g2005 -o sim/tb_uart_buffer.vvp -s tb_uart_buffer \
-    rtl/uart_buffer.v ../rtl/uart_rx.v ../rtl/uart_tx.v sim/tb_uart_buffer.v
+    rtl/uart_buffer.v ../00_uart_echo/rtl/uart_rx.v ../00_uart_echo/rtl/uart_tx.v sim/tb_uart_buffer.v
 vvp sim/tb_uart_buffer.vvp
 ```
 

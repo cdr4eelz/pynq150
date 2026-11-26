@@ -22,7 +22,7 @@ A UART-driven 64-bit AXI4 master DDR test on the PYNQ-Z2. Sequence:
   `build.tcl` is a derived copy of that JTAG-to-AXI BD script, with the
   custom master added and JTAG-to-AXI kept as a second SmartConnect slave
   for debug.
-- UART PHY is reused, not copied: `../rtl/uart_rx.v`, `../rtl/uart_tx.v`.
+- UART PHY is reused, not copied: `../00_uart_echo/rtl/uart_rx.v`, `../00_uart_echo/rtl/uart_tx.v`.
 - Clock is PS `FCLK_CLK0` at 100 MHz (baud divisor `100_000_000/115200 = 868`).
   There is no MMCM in this top; LD2 is "FCLK alive / out of reset".
 - Load the bitstream with PYNQ `Overlay` from Linux, **not** over JTAG
@@ -121,7 +121,7 @@ From this directory: `make sim`
 
 ```
 iverilog -g2005 -o sim/tb_uart_axi_ddr.vvp -s tb_uart_axi_ddr \
-    rtl/uart_axi_ddr_test.v ../rtl/uart_rx.v ../rtl/uart_tx.v \
+    rtl/uart_axi_ddr_test.v ../00_uart_echo/rtl/uart_rx.v ../00_uart_echo/rtl/uart_tx.v \
     sim/axi4_slave_mem.v sim/tb_uart_axi_ddr.v
 vvp sim/tb_uart_axi_ddr.vvp
 ```

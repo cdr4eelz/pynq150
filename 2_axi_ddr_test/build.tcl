@@ -13,8 +13,8 @@ puts "BOARD_PART: $bp"
 set_property board_part $bp [current_project]
 
 add_files -norecurse [list \
-    [file join $repo rtl uart_rx.v] \
-    [file join $repo rtl uart_tx.v] \
+    [file join $repo 00_uart_echo rtl uart_rx.v] \
+    [file join $repo 00_uart_echo rtl uart_tx.v] \
     [file join $repo 2_axi_ddr_test rtl uart_axi_ddr_test.v] \
     [file join $repo 2_axi_ddr_test rtl uart_axi_top.v]]
 update_compile_order -fileset sources_1
