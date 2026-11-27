@@ -1,0 +1,17 @@
+
+#### 2026-11-26 16:29:01 PST  port=/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_AV0KR19T-if00-port0
+
+
+> 
+#### file 30030000 148 (37 words from icache_prog.hex)
+file 30030000 148 > sw 0 10020000
+> result
+a6e8100a
+> jal 10030000
+> lw 10020000
+10020000:00000020
+> jal 10030000
+> lw 10020000
+10020000:00000020
+> 
+#### done

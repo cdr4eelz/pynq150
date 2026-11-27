@@ -1,0 +1,41 @@
+
+#### 2026-11-26 16:29:10 PST  port=/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_AV0KR19T-if00-port0
+
+
+> 
+#### file 10110000 4096 (1024 words from data4k.hex)
+file 10110000 4096 > gs
+0100001f PF#01-d  GF#00-ERLFG  SF:10400000
+ hw:c044aaff sw:4044ffaa
+> pf 1
+> result
+ac408670
+> copy 10110000 0 1000
+ac408670
+> copy 10110000 10190000 1000
+ac408670
+> copy 10190000 0 1000
+ac408670
+> copy 40000000 10210000 4000
+d2e8c4ab
+> copy 10210000 0 4000
+d2e8c4ab
+> sf 1
+> swcolor 00203040
+> swfill
+> lw 10400000
+10400000:00203040
+> lw 10657c7c
+10657c7c:00203040
+> gs
+0100001f PF#01-d  GF#00-ERLFG  SF:10400000
+ hw:c044aaff sw:00203040
+> copy 10100000 0 1000
+ac408670
+> copy 10200000 0 4000
+d2e8c4ab
+> gs
+0100001f PF#01-d  GF#00-ERLFG  SF:10400000
+ hw:c044aaff sw:00203040
+> 
+#### done
