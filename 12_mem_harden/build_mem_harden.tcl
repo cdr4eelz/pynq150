@@ -1,4 +1,5 @@
-# Build the 12 (mem_harden) overlay: 11 + RC pixf priority, D$ timing fix: PS7 block design fb_ps (as 10: PS7 + SmartConnect ->
+# Build the 12 (mem_harden) overlay: 11 + RC pixf priority, adapter head register, cache enable
+# timing fix, CPU floorplan + timing-driven impl flow: PS7 block design fb_ps (as 10: PS7 + SmartConnect ->
 # S_AXI_HP0 64-bit, JTAG-to-AXI, proc_sys_reset) + mips_gpu_top (MMCM 40/200 MHz, sys_core,
 # Digilent rgb2dvi). IPs come from the unmodified proj150 scripts in ip/: the FIFOs and cache
 # BRAMs of 10 plus bios_mem / isr_mem / dmem_blk_ram / imem_blk_ram (COE from sw/) and uarx_fifo.
@@ -113,13 +114,27 @@ add_files -norecurse [glob $d/proj/mem_harden.srcs/sources_1/bd/fb_ps/hdl/fb_ps_
 add_files -fileset constrs_1 [list \
     [file join $root constr pynq_z2_hdmi_fb.xdc] \
     [file join $v rgb2dvi.xdc]]
+# 12 floorplan: CPU core + caches pblock (implementation only, see the file).
+add_files -fileset constrs_1 [file join $root constr pblock_cpu.xdc]
+set_property USED_IN_SYNTHESIS false [get_files pblock_cpu.xdc]
 set_property top mips_gpu_top [current_fileset]
 update_compile_order -fileset sources_1
 generate_target all [get_files fb_ps.bd]
-# The 50 MHz domain's worst path is cs150's single-cycle D$-hit loop (D$ BRAM -> CPU MEM/forward ->
-# next address -> D$ enable, 21 levels, ~70% route). The default strategy missed by 0.30 ns;
-# this one closes it (+0.32 ns) without RTL changes.
+# 12 timing closure (no RTL change to the CPU): base strategy Performance_ExplorePostRoutePhysOpt,
+# plus the pblock above, ExtraTimingOpt placement under a 0.5 ns clk_fpga_1 setup over-constraint
+# (constr/impl_place_pre.tcl, removed after phys_opt by constr/impl_physopt_post.tcl), AggressiveExplore
+# phys_opt / route / post-route phys_opt. Picked from non-project trials on the post-opt checkpoint
+# (STATUS.md): 11's strategy alone gave clk_fpga_1 +0.09 ns; this flow +0.79 ns in the trial.
 set_property strategy Performance_ExplorePostRoutePhysOpt [get_runs impl_1]
+set ir [get_runs impl_1]
+set_property STEPS.PLACE_DESIGN.ARGS.DIRECTIVE ExtraTimingOpt $ir
+set_property STEPS.PLACE_DESIGN.TCL.PRE [file join $root constr impl_place_pre.tcl] $ir
+set_property STEPS.PHYS_OPT_DESIGN.IS_ENABLED true $ir
+set_property STEPS.PHYS_OPT_DESIGN.ARGS.DIRECTIVE AggressiveExplore $ir
+set_property STEPS.PHYS_OPT_DESIGN.TCL.POST [file join $root constr impl_physopt_post.tcl] $ir
+set_property STEPS.ROUTE_DESIGN.ARGS.DIRECTIVE AggressiveExplore $ir
+set_property STEPS.POST_ROUTE_PHYS_OPT_DESIGN.IS_ENABLED true $ir
+set_property STEPS.POST_ROUTE_PHYS_OPT_DESIGN.ARGS.DIRECTIVE AggressiveExplore $ir
 launch_runs impl_1 -to_step write_bitstream -jobs 4
 wait_on_run impl_1
 puts "IMPL_STATUS: [get_property STATUS [get_runs impl_1]]"
