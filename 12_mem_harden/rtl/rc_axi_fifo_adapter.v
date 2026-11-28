@@ -17,6 +17,8 @@
 //    mig_caf; the AXI window wraps in WIN_AW bits anyway.
 //  * 12: prog_full of mig_caf is the caf_backlog output (wr_clk domain), for the
 //    RequestController's backlog gate (proj150 port, see 12_mem_harden PLAN.md).
+//  * 12: mig_caf's head is registered (hd_*) before the address-conflict check and
+//    AW/AR issue (100 MHz timing); +1 axi_clk latency only when the queue was empty.
 //  * FWFT valid stays high while a beat sits in mig_rdf, but the unmodified
 //    RequestController counts every cycle rdf_wren is high as a serviced
 //    read. So the beat is handed over as a one-cycle pulse exactly when it is
@@ -222,16 +224,28 @@ module rc_axi_fifo_adapter #(
 
     wire       rd_done = m_axi_rvalid && m_axi_rlast;
 
-    wire [2:0]  cmd   = caf_d[30:28];
-    wire [31:0] blk   = base_a +
-                        {{(32-WIN_AW){1'b0}}, caf_d[WIN_AW-4:2], 5'b00000};
-    wire        is_wr = caf_v && (cmd == 3'b000);
-    wire        is_rd = caf_v && (cmd == 3'b001);
-    wire        is_bad = caf_v && !is_wr && !is_rd;
+    // ---- 12: command head register. mig_caf's FWFT output is popped into the hd_*
+    // flops and the address-conflict check / AW-AR issue work from those flops, so
+    // the FIFO18 clock-to-out and its fanout-33 dout routing are no longer in front
+    // of the hazard compare -> issue -> tag-CE path (100 MHz worst path in 12's first
+    // build). Same check, same order: a command issues only when its hazard check
+    // (against the live in-flight tags) is clear. Cost: +1 axi_clk when the queue
+    // was empty; back-to-back commands keep full rate (refill in the consume cycle).
+    localparam TAGW = WIN_AW - 4 - 2 + 1;           // addr[WIN_AW-4:2]
+    reg             hd_v;
+    reg  [2:0]      hd_cmd;
+    reg  [TAGW-1:0] hd_tag;
+    reg  [31:0]     hd_blk;
+    (* ASYNC_REG = "TRUE" *) reg [1:0] frst_a;     // fifo_rst (clk) -> axi_clk: drop hd
+    always @(posedge axi_clk) frst_a <= {frst_a[0], fifo_rst};
+
+    wire [2:0]  cmd   = hd_cmd;
+    wire [31:0] blk   = hd_blk;
+    wire        is_wr = hd_v && (cmd == 3'b000);
+    wire        is_rd = hd_v && (cmd == 3'b001);
+    wire        is_bad = hd_v && !is_wr && !is_rd;
 
     // ---- address-conflict check against in-flight opposite-direction tags
-    localparam TAGW = WIN_AW - 4 - 2 + 1;           // addr[WIN_AW-4:2]
-    wire [TAGW-1:0] hd_tag = caf_d[WIN_AW-4:2];
     reg  [TAGW-1:0] wtag [0:MAX_WR_OUT-1];          // writes: AW issued, B not yet seen
     reg  [TAGW-1:0] rtag [0:MAX_RD_OUT-1];          // reads: AR issued, RLAST not yet seen
     reg  [MAX_WR_OUT-1:0] wtv;
@@ -253,10 +267,24 @@ module rc_axi_fifo_adapter #(
     wire wr_ok = is_wr && !war_hz && (wr_out < MAX_WR_OUT) && aw_free;
     wire rd_ok = is_rd && !raw_hz && (rd_out < MAX_RD_OUT) && ar_free
                  && !rdf_pf;
-    assign caf_rd = wr_ok || rd_ok || is_bad;
+    wire hd_take  = wr_ok || rd_ok || is_bad;     // head consumed this cycle
+    assign caf_rd = caf_v && (!hd_v || hd_take) && !frst_a[1];
 
-    wire issue_wr = caf_v && caf_rd && is_wr;
-    wire issue_rd = caf_v && caf_rd && is_rd;
+    wire issue_wr = wr_ok;
+    wire issue_rd = rd_ok;
+
+    always @(posedge axi_clk) begin
+        if (axi_rst || frst_a[1]) begin
+            hd_v <= 1'b0; hd_cmd <= 3'd0; hd_tag <= {TAGW{1'b0}}; hd_blk <= 32'd0;
+        end else if (caf_rd) begin
+            hd_v   <= 1'b1;
+            hd_cmd <= caf_d[30:28];
+            hd_tag <= caf_d[WIN_AW-4:2];
+            hd_blk <= base_a + {{(32-WIN_AW){1'b0}}, caf_d[WIN_AW-4:2], 5'b00000};
+        end else if (hd_take) begin
+            hd_v <= 1'b0;
+        end
+    end
 
     // commands accepted from the RequestController (caf_wren, clk) and not
     // yet completed (B / RLAST / dropped bad cmd on axi_clk). Completions are
@@ -298,11 +326,11 @@ module rc_axi_fifo_adapter #(
         end else begin
             wrd_a <= wrd_a + {10'd0, wr_done};
             rdd_a <= rdd_a + {10'd0, rd_done};
-            bad_a <= bad_a + {10'd0, is_bad && caf_rd};
+            bad_a <= bad_a + {10'd0, is_bad};
             // gray-encode on the source clock (one bit changes per increment)
             wrd_a_g <= bin2gray(wrd_a + {10'd0, wr_done});
             rdd_a_g <= bin2gray(rdd_a + {10'd0, rd_done});
-            bad_a_g <= bin2gray(bad_a + {10'd0, is_bad && caf_rd});
+            bad_a_g <= bin2gray(bad_a + {10'd0, is_bad});
         end
     end
     (* ASYNC_REG = "TRUE" *) reg [10:0] wrd_g1, wrd_g2, rdd_g1, rdd_g2, bad_g1, bad_g2;
