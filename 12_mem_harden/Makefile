@@ -9,6 +9,7 @@
 #                   frames with the PixelFeeder on (slow); SYSARGS=+nogpu skips the GPU part.
 #   make simmix     RC + adapter mixed read/write vs hostile slave, 4 seeds x 5 latency sets (from 10)
 #   make simthru    same bench, throughput (disjoint / same lines)
+#   make simprio    PixelFeeder read latency under write load, 12 RC vs sim/ref 11 RC (sim/prio.log)
 #   make sim-pattern / sim-tmds   08's timing + pattern and TMDS checks
 #   make overlay    Vivado 2019.1 -> ../build/mips_gpu/mips_gpu.{bit,hwh} + ps7_init.tcl
 
@@ -33,15 +34,16 @@ SYSFLAGS := -g2012 -I rtl/proj150 $(addprefix -I $(CS)/,gpu innerds cpu base_io 
 MIFS := sim/run/bios_mem.mif sim/run/isr_mem.mif sim/run/dmem_blk_ram.mif sim/run/imem_blk_ram.mif
 PAT_SRCS := rtl/vga_timing.v rtl/test_pattern.v sim/tb_hdmi_cs150.v
 
-MIX_SRCS := sim/tb_adapter_mixed.v $(CS)/base_mem/RequestController.v sim/models/ip_fifos.v \
+MIX_SRCS = sim/tb_adapter_mixed.v $(RC_SRC) sim/models/ip_fifos.v \
             sim/models/fifo_async_fwft_model.v sim/axi4_slave_rand.v $(ADAPTER)
 MIX_P     = -Ptb_adapter_mixed.MODE=$(1) -Ptb_adapter_mixed.N=$(2) -Ptb_adapter_mixed.SEED=$(3) \
             -Ptb_adapter_mixed.RLAT_MIN=$(4) -Ptb_adapter_mixed.RLAT_MAX=$(5) \
             -Ptb_adapter_mixed.BLAT_MIN=$(6) -Ptb_adapter_mixed.BLAT_MAX=$(7)
+RC_SRC   ?= $(CS)/base_mem/RequestController.v
 MIX_RUN   = iverilog -g2012 -o sim/tbmix.vvp -s tb_adapter_mixed $(call MIX_P,$(1),$(2),$(3),$(4),$(5),$(6),$(7)) $(MIX_SRCS) && \
             vvp -n sim/tbmix.vvp | grep -E "RESULT|TIME|MISMATCH|TIMEOUT|flags|PASSED|FAILED|RECOVERY_DROP" | tee -a sim/mix.log
 
-.PHONY: all help sim simsys simmix _mixrun simthru sim-pattern sim-tmds overlay clean
+.PHONY: all help sim simsys simmix _mixrun simthru simprio sim-pattern sim-tmds overlay clean
 
 all: sim
 help:
@@ -81,6 +83,23 @@ simthru:
 	@$(call MIX_RUN,1,2048,1,40,40,30,30) | tee -a sim/thru.log
 	@$(call MIX_RUN,2,2048,1,40,40,30,30) | tee -a sim/thru.log
 	@! grep -q "FAILED\|RECOVERY_DROP" sim/thru.log
+
+
+# 12: PixelFeeder read latency under a back-to-back write flood (MODE 3, pixf at display pace,
+# 1 line / 10 RC clk = 160 MB/s), 12's RequestController (pixf first + caf_backlog gate) against
+# 11's (sim/ref/RequestController_11.v). Two slave latency sets.
+simprio:
+	@rm -f sim/prio.log
+	@for lat in "40 40 30 30" "20 120 20 120"; do set -- $$lat; \
+	  for rc in $(CS)/base_mem/RequestController.v sim/ref/RequestController_11.v; do \
+	    echo "== RC $$rc lat R$$1-$$2 B$$3-$$4" | tee -a sim/prio.log; \
+	    $(MAKE) --no-print-directory RC_SRC=$$rc _priorun R1=$$1 R2=$$2 B1=$$3 B2=$$4 || exit 1; \
+	  done; done
+	@! grep -q "FAILED\|RECOVERY_DROP" sim/prio.log
+_priorun:
+	@iverilog -g2012 -o sim/tbprio.vvp -s tb_adapter_mixed $(call MIX_P,3,3000,1,$(R1),$(R2),$(B1),$(B2)) \
+	   -Ptb_adapter_mixed.WIN_AW=20 -Ptb_adapter_mixed.MEM_AW=21 $(MIX_SRCS) && \
+	 vvp -n sim/tbprio.vvp | grep -E "PIXF_LAT|TIME|PASSED|FAILED|TIMEOUT|RECOVERY_DROP" | tee -a sim/prio.log
 
 sim-pattern: $(PAT_SRCS)
 	iverilog -g2005 -o sim/tb_hdmi_cs150.vvp -s tb_hdmi_cs150 $(PAT_SRCS)

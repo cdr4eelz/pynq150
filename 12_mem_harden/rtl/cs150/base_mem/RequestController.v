@@ -33,6 +33,7 @@ module RequestController(
     // DDR2 FIFOs (inputs);         [Master access]
     input           caf_full,
     input           wdf_full,
+    input           caf_backlog, // 12 (proj150): mig_caf prog_full, enough commands queued
     input           rdf_wren,
 
     // Inst-cache (inputs);         [Read/Write/Stall]
@@ -138,7 +139,17 @@ module RequestController(
     reg  [11:0] serviced_reads; // extra bit b/c 2 chunks - use [11:1] to cmpare.
 
     wire fetch_issued;
-    assign fetch_issued = caf_wren && (caf_cadr[33:31] == 3'b001) && !ff_full;
+    // 12 (ported from proj150): CAF backlog limit. While caf_backlog (mig_caf prog_full) is high, a
+    // NEW command from any path except the PixelFeeder is refused. The CAF is one shared in-order
+    // FIFO, so a run of write-through stores or GPU writes could otherwise queue hundreds of
+    // commands ahead of every PixelFeeder read and starve the display. Only the first beat of a
+    // write (CAF + WDF together) is held; a pending second WDF beat (wdf_wren without caf_wren)
+    // always goes through, so a write pair is never split. The prog_full threshold (24) exceeds the
+    // PixelFeeder's own limit of queued reads, so this cannot deadlock.
+    reg  sel_caf_wren; // command-carrying request of the path selected below
+    wire gate_full = ff_full || (caf_backlog && sel_caf_wren);
+
+    assign fetch_issued = caf_wren && (caf_cadr[33:31] == 3'b001) && !gate_full;
 
     always @(posedge clk) begin
         if(rst)
@@ -220,17 +231,17 @@ module RequestController(
     always @(posedge clk) begin
         if(rst)
             fill_reserved <= 1'b0;
-        else if((fifo_access == FILL_ACCESS) && !ff_full)
+        else if((fifo_access == FILL_ACCESS) && !gate_full)
             fill_reserved <= !fill_reserved;
 
         if(rst)
             line_reserved <= 1'b0;
-        else if((fifo_access == LINE_ACCESS) && !ff_full)
+        else if((fifo_access == LINE_ACCESS) && !gate_full)
             line_reserved <= !line_reserved;
 
         if(rst)
             bpas_reserved <= 1'b0;
-        else if((fifo_access == BPAS_ACCESS) && !ff_full)
+        else if((fifo_access == BPAS_ACCESS) && !gate_full)
             bpas_reserved <= !bpas_reserved;
     end
 
@@ -238,37 +249,40 @@ module RequestController(
 
     always @(*) begin
         // Access is given in the order of:
-        //   inst, data, gcmd, pixl, fill, line, bpas
-        if     ((inst_caf_wren || inst_wdf_wren) && !reserved) begin
+        //   pixl, inst, data, gcmd, fill, line, bpas   (12: PixelFeeder first, as proj150)
+        // The PixelFeeder is a real-time reader and goes first. It is self-limiting (it only
+        // requests while its pixel FIFO is below prog_full, with a bounded number of beats in
+        // flight), so it takes only the display's share.
+        if     (pixf_raf_wren && !reserved) begin
+            fifo_access = PIXF_ACCESS;
+            // Read-only path for PixelFeeder:
+            caf_cadr  = {3'b001, pixf_raf_addr};
+            caf_wren  = pixf_raf_wren && !gate_full;
+            wdf_mdat  = {16'hFFFF, 128'bx}; // doesn't matter ; not writing
+            wdf_wren  = 1'b0; //not writing
+        end
+        else if((inst_caf_wren || inst_wdf_wren) && !reserved) begin
             fifo_access = INST_ACCESS;
             // Read/Write path for icache -> fifo signals:
             caf_cadr  = inst_caf_cadr;
-            caf_wren  = inst_caf_wren && !ff_full;
+            caf_wren  = inst_caf_wren && !gate_full;
             wdf_mdat  = inst_wdf_mdat;
-            wdf_wren  = inst_wdf_wren && !ff_full;
+            wdf_wren  = inst_wdf_wren && !gate_full;
         end
         else if((data_caf_wren || data_wdf_wren) && !reserved) begin
             fifo_access = DATA_ACCESS;
             // Read/Write path for dcache -> fifo signals:
             caf_cadr  = data_caf_cadr;
-            caf_wren  = data_caf_wren && !ff_full;
+            caf_wren  = data_caf_wren && !gate_full;
             wdf_mdat  = data_wdf_mdat;
-            wdf_wren  = data_wdf_wren && !ff_full;
+            wdf_wren  = data_wdf_wren && !gate_full;
         end
 
         else if(gcmd_raf_wren && !reserved) begin
             fifo_access = GCMD_ACCESS;
             // Read-only path for GraphicsController:
             caf_cadr  = {3'b001, gcmd_raf_addr};
-            caf_wren  = gcmd_raf_wren && !ff_full;
-            wdf_mdat  = {16'hFFFF, 128'bx}; // doesn't matter ; not writing
-            wdf_wren  = 1'b0; //not writing
-        end
-        else if(pixf_raf_wren && !reserved) begin
-            fifo_access = PIXF_ACCESS;
-            // Read-only path for PixelFeeder:
-            caf_cadr  = {3'b001, pixf_raf_addr};
-            caf_wren  = pixf_raf_wren && !ff_full;
+            caf_wren  = gcmd_raf_wren && !gate_full;
             wdf_mdat  = {16'hFFFF, 128'bx}; // doesn't matter ; not writing
             wdf_wren  = 1'b0; //not writing
         end
@@ -277,25 +291,25 @@ module RequestController(
             fifo_access = FILL_ACCESS;
             // Write-only path for FrameFiller:
             caf_cadr  = {3'b000, fill_waf_addr};
-            caf_wren  = fill_waf_wren && !ff_full;
+            caf_wren  = fill_waf_wren && !gate_full;
             wdf_mdat  = fill_wdf_mdat;
-            wdf_wren  = fill_wdf_wren && !ff_full;
+            wdf_wren  = fill_wdf_wren && !gate_full;
         end
         else if((line_waf_wren || line_wdf_wren) && (!reserved || line_reserved)) begin
             fifo_access = LINE_ACCESS;
             // Write-only path for LineEngine:
             caf_cadr  = {3'b000, line_waf_addr};
-            caf_wren  = line_waf_wren && !ff_full;
+            caf_wren  = line_waf_wren && !gate_full;
             wdf_mdat  = line_wdf_mdat;
-            wdf_wren  = line_wdf_wren && !ff_full;
+            wdf_wren  = line_wdf_wren && !gate_full;
         end
         else if((bpas_waf_wren || bpas_wdf_wren) && (!reserved || bpas_reserved)) begin
             fifo_access = BPAS_ACCESS;
             // Write-only path for cache-bypass:
             caf_cadr  = {3'b000, bpas_waf_addr};
-            caf_wren  = bpas_waf_wren && !ff_full;
+            caf_wren  = bpas_waf_wren && !gate_full;
             wdf_mdat  = bpas_wdf_mdat;
-            wdf_wren  = bpas_wdf_wren && !ff_full;
+            wdf_wren  = bpas_wdf_wren && !gate_full;
         end
 
         else begin
@@ -316,19 +330,31 @@ module RequestController(
     //   (checking against fifo_access implicitly checks reserved)
 
     //Read-Write:
-    assign inst_caf_full  = (fifo_access == INST_ACCESS)  ? ff_full : 1'b1;
-    assign inst_wdf_full  = (fifo_access == INST_ACCESS)  ? ff_full : 1'b1;
-    assign data_caf_full  = (fifo_access == DATA_ACCESS)  ? ff_full : 1'b1;
-    assign data_wdf_full  = (fifo_access == DATA_ACCESS)  ? ff_full : 1'b1;
+    always @(*) begin
+        case (fifo_access)
+            INST_ACCESS: sel_caf_wren = inst_caf_wren;
+            DATA_ACCESS: sel_caf_wren = data_caf_wren;
+            GCMD_ACCESS: sel_caf_wren = gcmd_raf_wren;
+            FILL_ACCESS: sel_caf_wren = fill_waf_wren;
+            LINE_ACCESS: sel_caf_wren = line_waf_wren;
+            BPAS_ACCESS: sel_caf_wren = bpas_waf_wren;
+            default:     sel_caf_wren = 1'b0; // PIXF (exempt) and NULL
+        endcase
+    end
+
+    assign inst_caf_full  = (fifo_access == INST_ACCESS)  ? gate_full : 1'b1;
+    assign inst_wdf_full  = (fifo_access == INST_ACCESS)  ? gate_full : 1'b1;
+    assign data_caf_full  = (fifo_access == DATA_ACCESS)  ? gate_full : 1'b1;
+    assign data_wdf_full  = (fifo_access == DATA_ACCESS)  ? gate_full : 1'b1;
     //Read-only:
-    assign gcmd_raf_full  = (fifo_access == GCMD_ACCESS)  ? ff_full : 1'b1;
-    assign pixf_raf_full  = (fifo_access == PIXF_ACCESS)  ? ff_full : 1'b1;
+    assign gcmd_raf_full  = (fifo_access == GCMD_ACCESS)  ? gate_full : 1'b1;
+    assign pixf_raf_full  = (fifo_access == PIXF_ACCESS)  ? gate_full : 1'b1;
     //Write-only:
-    assign fill_waf_full  = (fifo_access == FILL_ACCESS)  ? ff_full : 1'b1;
-    assign fill_wdf_full  = (fifo_access == FILL_ACCESS)  ? ff_full : 1'b1;
-    assign line_waf_full  = (fifo_access == LINE_ACCESS)  ? ff_full : 1'b1;
-    assign line_wdf_full  = (fifo_access == LINE_ACCESS)  ? ff_full : 1'b1;
-    assign bpas_waf_full  = (fifo_access == BPAS_ACCESS)  ? ff_full : 1'b1;
-    assign bpas_wdf_full  = (fifo_access == BPAS_ACCESS)  ? ff_full : 1'b1;
+    assign fill_waf_full  = (fifo_access == FILL_ACCESS)  ? gate_full : 1'b1;
+    assign fill_wdf_full  = (fifo_access == FILL_ACCESS)  ? gate_full : 1'b1;
+    assign line_waf_full  = (fifo_access == LINE_ACCESS)  ? gate_full : 1'b1;
+    assign line_wdf_full  = (fifo_access == LINE_ACCESS)  ? gate_full : 1'b1;
+    assign bpas_waf_full  = (fifo_access == BPAS_ACCESS)  ? gate_full : 1'b1;
+    assign bpas_wdf_full  = (fifo_access == BPAS_ACCESS)  ? gate_full : 1'b1;
 
 endmodule

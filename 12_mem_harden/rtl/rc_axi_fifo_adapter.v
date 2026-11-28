@@ -15,8 +15,8 @@
 // caf_cadr, no caf_backlog input, rdf_wren = "MIG rd_data_valid" pulse):
 //  * caf_cadr[30:28] (address bits above 2**28 x 8 B) are not stored in
 //    mig_caf; the AXI window wraps in WIN_AW bits anyway.
-//  * prog_full of mig_caf (caf_backlog) is left unconnected: cs150's
-//    RequestController has no such input.
+//  * 12: prog_full of mig_caf is the caf_backlog output (wr_clk domain), for the
+//    RequestController's backlog gate (proj150 port, see 12_mem_harden PLAN.md).
 //  * FWFT valid stays high while a beat sits in mig_rdf, but the unmodified
 //    RequestController counts every cycle rdf_wren is high as a serviced
 //    read. So the beat is handed over as a one-cycle pulse exactly when it is
@@ -87,6 +87,7 @@ module rc_axi_fifo_adapter #(
 
     // RequestController master port (MIG-style)
     output wire          caf_full,
+    output wire          caf_backlog,    // 12: mig_caf prog_full (>= 24 commands queued)
     input  wire          caf_wren,
     input  wire [33:0]   caf_cadr,
     output wire          wdf_full,
@@ -188,7 +189,7 @@ module rc_axi_fifo_adapter #(
 
     mig_caf u_caf (
         .rst(fifo_rst),
-        .wr_clk(clk), .full(caf_full), .prog_full(/*caf_backlog: unused*/),
+        .wr_clk(clk), .full(caf_full), .prog_full(caf_backlog),
         .wr_en(caf_wren), .din({caf_cadr[33:31], caf_cadr[27:0]}), .wr_ack(),
         .rd_clk(axi_clk), .empty(), .rd_en(caf_rd), .valid(caf_v), .dout(caf_d),
         .underflow());

@@ -1,5 +1,5 @@
 // Mixed read/write test for rc_axi_fifo_adapter: the cs150 RequestController
-// (verbatim) with two behavioural clients, rc_axi_fifo_adapter (with the mig_*
+// (12: with the proj150 pixf priority + caf_backlog gate) with two behavioural clients, rc_axi_fifo_adapter (with the mig_*
 // FIFO models) and the hostile slave sim/axi4_slave_rand.v.
 //   data port : Cache.v-style WRITE1/WRITE2 and FETCH/READ1/READ2 (reads AND writes)
 //   pixf port : read-only streaming reads, up to the FIFO credit in flight
@@ -12,6 +12,9 @@
 // MODE 1  throughput: sequential writes to lines [WBASE..] while pixf streams
 //         lines [RBASE..] (disjoint regions) - no hazards, overlap is free
 // MODE 2  throughput, worst case: writes and streaming reads walk the SAME lines
+// MODE 3  (12) display under a write flood: data port writes back to back (as MODE 1) while pixf
+//         reads at display pace, one line per PIXP RC cycles; PIXF_LAT reports the worst and mean
+//         request->last-beat latency of the pixf reads (what a PixelFeeder FIFO must cover)
 // Parameters (iverilog -P): MODE N SEED RLAT_MIN RLAT_MAX BLAT_MIN BLAT_MAX HOT GAP
 // Needs iverilog -g2012. -DHAVE_HZ adds the hazard-hold statistics (patched adapter only).
 `timescale 1ns / 1ps
@@ -28,6 +31,7 @@ module tb_adapter_mixed;
     parameter STALL    = 1;
     parameter HOT      = 24;                 // MODE 0: hot-set size in lines
     parameter GAP      = 2;                  // MODE 0: max idle cycles between ops
+    parameter PIXP     = 10;                 // MODE 3: RC cycles per pixf line (10 = 160 MB/s)
     parameter [31:0] BASE = 32'h1684_9F20;
     localparam NLINES = 1 << (WIN_AW - 5);
 
@@ -38,7 +42,7 @@ module tb_adapter_mixed;
     always #5  axi_clk = ~axi_clk;  // 100 MHz AXI
 
     // ---------------- DUT chain ----------------
-    wire         rcon_caf_full, rcon_caf_wren, rcon_wdf_full, rcon_wdf_wren;
+    wire         rcon_caf_full, rcon_caf_wren, rcon_wdf_full, rcon_wdf_wren, rcon_caf_backlog;
     wire [33:0]  rcon_caf_cadr;
     wire [143:0] rcon_wdf_mdat;
     wire         rcon_rdf_rden, rcon_rdf_wren;
@@ -52,7 +56,7 @@ module tb_adapter_mixed;
 
     RequestController rc (
         .clk(clk), .rst(rst),
-        .caf_full(rcon_caf_full), .wdf_full(rcon_wdf_full), .rdf_wren(rcon_rdf_wren),
+        .caf_full(rcon_caf_full), .wdf_full(rcon_wdf_full), .caf_backlog(rcon_caf_backlog), .rdf_wren(rcon_rdf_wren),
         .inst_caf_wren(1'b0), .inst_caf_cadr(34'd0), .inst_wdf_wren(1'b0),
         .inst_wdf_mdat(144'd0), .inst_rdf_rden(1'b0), .inst_stall(1'b0),
         .data_caf_wren(data_caf_wren), .data_caf_cadr(data_caf_cadr),
@@ -89,7 +93,7 @@ module tb_adapter_mixed;
         .clk(clk), .rst(rst), .axi_clk(axi_clk), .axi_rst(axi_rst), .ready(a_ready),
         .base_addr(BASE), .clr_err(clr_err),
         .axi_err(axi_err), .bad_cmd(bad_cmd), .peak_wr(peak_wr), .peak_rd(peak_rd), .idle(a_idle),
-        .caf_wren(rcon_caf_wren), .caf_cadr(rcon_caf_cadr), .caf_full(rcon_caf_full),
+        .caf_wren(rcon_caf_wren), .caf_cadr(rcon_caf_cadr), .caf_full(rcon_caf_full), .caf_backlog(rcon_caf_backlog),
         .wdf_wren(rcon_wdf_wren), .wdf_mdat(rcon_wdf_mdat), .wdf_full(rcon_wdf_full),
         .rdf_wren(rcon_rdf_wren), .rdf_data(rdf_data), .rdf_rden(rcon_rdf_rden),
         .m_axi_awid(awid), .m_axi_awaddr(awaddr), .m_axi_awlen(awlen),
@@ -186,7 +190,7 @@ module tb_adapter_mixed;
     function integer wr_line(input integer k);
         begin
             if (MODE == 0)      wr_line = (trng[23:8] % HOT);
-            else if (MODE == 1) wr_line = (NLINES/2) + (k % (NLINES/2));
+            else if (MODE == 1 || MODE == 3) wr_line = (NLINES/2) + (k % (NLINES/2));
             else                wr_line = (k % (NLINES/2));
         end
     endfunction
@@ -292,13 +296,14 @@ module tb_adapter_mixed;
             if (pixf_raf_wren && !pixf_raf_full) begin   // accepted this cycle
                 pixf_raf_wren <= 1'b0;
                 p_issued = p_issued + 1;
-                p_gap = (MODE == 0) ? (trng[30:28] % (GAP + 1)) : 0;
+                p_gap = (MODE == 0) ? (trng[30:28] % (GAP + 1)) : (MODE == 3) ? PIXP - 1 : 0;
             end else if (!pixf_raf_wren && started && p_issued < N) begin
                 if (p_gap > 0) p_gap = p_gap - 1;
                 else begin
                     p_line = rd_line(p_issued);
                     pixf_raf_addr <= 31'(p_line << 2);
                     pixf_raf_wren <= 1'b1;
+                    p_t0[p_issued % 4096] = cyc;
                 end
             end
             if (pixf_rdf_wren) begin
@@ -311,6 +316,9 @@ module tb_adapter_mixed;
                             $display("MISMATCH pixf read #%0d t=%0d\n   got %h\n   exp %h", p_got, cyc,
                                      {p_e0, rdf_data}, expq[qh % 262144]);
                     end
+                    p_lat = cyc - p_t0[qh % 4096];
+                    if (p_lat > p_lat_max) p_lat_max = p_lat;
+                    p_lat_sum = p_lat_sum + p_lat;
                     qh = qh + 1; p_got = p_got + 1;
                 end
             end
@@ -318,6 +326,9 @@ module tb_adapter_mixed;
     end
 
     always @(posedge clk) cyc <= rst ? 0 : cyc + 1;
+    integer p_t0 [0:4095];
+    integer p_lat, p_lat_max = 0;
+    real    p_lat_sum = 0.0;
     // hazard statistics (cycles the head command is held by the conflict check);
     // only with the address-conflict adapter (-DHAVE_HZ)
     integer held_raw, held_war;
@@ -378,6 +389,8 @@ module tb_adapter_mixed;
                  t1 - t0, wr_cmds + rd_cmds_d + rd_cmds_p, wr_cmds, rd_cmds_d + rd_cmds_p,
                  1.0 * (t1 - t0) / (wr_cmds + rd_cmds_d + rd_cmds_p),
                  1600.0 * (wr_cmds + rd_cmds_d + rd_cmds_p) / (t1 - t0));
+        $display("PIXF_LAT mode=%0d: max %0d RC cycles, mean %0.1f over %0d pixf reads", MODE, p_lat_max,
+                 p_lat_sum / (p_got > 0 ? p_got : 1), p_got);
         if (errors == 0) $display("MIXED TEST PASSED");
         else $display("MIXED TEST FAILED: %0d errors", errors);
         $finish;

@@ -135,7 +135,7 @@ module sys_core #(
     );
 
     // ---------------- RequestController + clients (Memory150.v) ----------------
-    wire         rcon_caf_full, rcon_caf_wren;
+    wire         rcon_caf_full, rcon_caf_wren, rcon_caf_backlog;
     wire [33:0]  rcon_caf_cadr;
     wire         rcon_wdf_full, rcon_wdf_wren;
     wire [143:0] rcon_wdf_mdat;
@@ -201,7 +201,8 @@ module sys_core #(
 
     RequestController req_con (
         .clk(clk), .rst(rst_bus),
-        .caf_full(rcon_caf_full), .wdf_full(rcon_wdf_full), .rdf_wren(rcon_rdf_wren),
+        .caf_full(rcon_caf_full), .wdf_full(rcon_wdf_full), .caf_backlog(rcon_caf_backlog),
+        .rdf_wren(rcon_rdf_wren),
         .inst_caf_wren(inst_caf_wren), .inst_caf_cadr(inst_caf_cadr), .inst_wdf_wren(inst_wdf_wren),
         .inst_wdf_mdat(inst_wdf_mdat), .inst_rdf_rden(inst_rdf_rden), .inst_stall(i_stall),
         .data_caf_wren(data_caf_wren), .data_caf_cadr(data_caf_cadr), .data_wdf_wren(data_wdf_wren),
@@ -228,6 +229,7 @@ module sys_core #(
         .base_addr(BASE), .clr_err(1'b0),
         .axi_err(axi_err), .bad_cmd(bad_cmd), .peak_wr(peak_wr), .peak_rd(peak_rd), .idle(a_idle),
         .caf_wren(rcon_caf_wren), .caf_cadr(rcon_caf_cadr), .caf_full(rcon_caf_full),
+        .caf_backlog(rcon_caf_backlog),
         .wdf_wren(rcon_wdf_wren), .wdf_mdat(rcon_wdf_mdat), .wdf_full(rcon_wdf_full),
         .rdf_wren(rcon_rdf_wren), .rdf_data(ALLR_rdf_data), .rdf_rden(rcon_rdf_rden),
         .m_axi_awid(m_axi_awid), .m_axi_awaddr(m_axi_awaddr), .m_axi_awlen(m_axi_awlen),
