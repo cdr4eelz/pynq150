@@ -11,7 +11,7 @@
 #   make simthru    same bench, throughput (disjoint / same lines)
 #   make simprio    PixelFeeder read latency under write load, 12 RC vs sim/ref 11 RC (sim/prio.log)
 #   make sim-pattern / sim-tmds   08's timing + pattern and TMDS checks
-#   make overlay    Vivado 2019.1 -> ../build/mips_gpu/mips_gpu.{bit,hwh} + ps7_init.tcl
+#   make overlay    Vivado 2019.1 -> ../build/mem_harden/mem_harden.{bit,hwh} + ps7_init.tcl
 
 VIVADO  ?= /tools/Xilinx/Vivado/2019.1/bin/vivado
 VBIN    ?= /tools/Xilinx/Vivado/2019.1/bin
@@ -114,7 +114,7 @@ sim-tmds: sim/tb_tmds_encoder.v $(VENDOR)/DVI_Constants.vhd $(VENDOR)/TMDS_Encod
 
 overlay:
 	@mkdir -p $(REPO)/build/logs
-	$(VIVADO_BAT) -log $(REPO)/build/logs/mips_gpu.log -source build_mips_gpu.tcl
+	$(VIVADO_BAT) -log $(REPO)/build/logs/mem_harden.log -source build_mem_harden.tcl
 
 clean:
 	rm -rf sim/*.vvp sim/*.vcd sim/*.log sim/sys_uart.txt sim/run sim/xsim *.jou *.log .Xil

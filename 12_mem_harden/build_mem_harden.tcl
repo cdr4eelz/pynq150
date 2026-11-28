@@ -1,16 +1,16 @@
-# Build the 11 MIPS150 + GPU overlay: PS7 block design fb_ps (as 10: PS7 + SmartConnect ->
+# Build the 12 (mem_harden) overlay: 11 + RC pixf priority, D$ timing fix: PS7 block design fb_ps (as 10: PS7 + SmartConnect ->
 # S_AXI_HP0 64-bit, JTAG-to-AXI, proc_sys_reset) + mips_gpu_top (MMCM 40/200 MHz, sys_core,
 # Digilent rgb2dvi). IPs come from the unmodified proj150 scripts in ip/: the FIFOs and cache
 # BRAMs of 10 plus bios_mem / isr_mem / dmem_blk_ram / imem_blk_ram (COE from sw/) and uarx_fifo.
-# Outputs (gitignored) in <repo>/build/mips_gpu/:
-#   mips_gpu.bit  mips_gpu.hwh  ps7_init.tcl/.c/.h  util.rpt  timing.rpt  clk_util.rpt  cdc.rpt
+# Outputs (gitignored) in <repo>/build/mem_harden/:
+#   mem_harden.bit  mem_harden.hwh  ps7_init.tcl/.c/.h  util.rpt  timing.rpt  clk_util.rpt  cdc.rpt
 # Does not program a board (see jtag_boot.tcl).
 set root [file normalize [file join [file dirname [info script]]]]
 set repo [file normalize [file join $root ..]]
-set d    [file normalize [file join $repo build mips_gpu]]
+set d    [file normalize [file join $repo build mem_harden]]
 file mkdir $d
 
-create_project mips_gpu $d/proj -part xc7z020clg400-1 -force
+create_project mem_harden $d/proj -part xc7z020clg400-1 -force
 set bp [lindex [get_board_parts *pynq-z2*] end]
 puts "BOARD_PART: $bp"
 set_property board_part $bp [current_project]
@@ -109,7 +109,7 @@ validate_bd_design
 save_bd_design
 
 make_wrapper -files [get_files fb_ps.bd] -top
-add_files -norecurse [glob $d/proj/mips_gpu.srcs/sources_1/bd/fb_ps/hdl/fb_ps_wrapper.v]
+add_files -norecurse [glob $d/proj/mem_harden.srcs/sources_1/bd/fb_ps/hdl/fb_ps_wrapper.v]
 add_files -fileset constrs_1 [list \
     [file join $root constr pynq_z2_hdmi_fb.xdc] \
     [file join $v rgb2dvi.xdc]]
@@ -128,10 +128,10 @@ report_utilization       -file $d/util.rpt
 report_timing_summary    -file $d/timing.rpt
 report_clock_utilization -file $d/clk_util.rpt
 report_cdc               -file $d/cdc.rpt
-file copy -force [glob $d/proj/mips_gpu.runs/impl_1/mips_gpu_top.bit] $d/mips_gpu.bit
-file copy -force [glob $d/proj/mips_gpu.srcs/sources_1/bd/fb_ps/hw_handoff/fb_ps.hwh] $d/mips_gpu.hwh
+file copy -force [glob $d/proj/mem_harden.runs/impl_1/mips_gpu_top.bit] $d/mem_harden.bit
+file copy -force [glob $d/proj/mem_harden.srcs/sources_1/bd/fb_ps/hw_handoff/fb_ps.hwh] $d/mem_harden.hwh
 # No-Linux JTAG boot (xsct): the PS7 init script generated for this exact PS config.
-foreach f [glob $d/proj/mips_gpu.srcs/sources_1/bd/fb_ps/ip/fb_ps_ps7_0/ps7_init.{tcl,c,h}] {
+foreach f [glob $d/proj/mem_harden.srcs/sources_1/bd/fb_ps/ip/fb_ps_ps7_0/ps7_init.{tcl,c,h}] {
     file copy -force $f $d/
 }
 puts "BUILD_DONE"

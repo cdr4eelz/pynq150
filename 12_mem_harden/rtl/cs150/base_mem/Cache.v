@@ -141,7 +141,14 @@ module Cache #(
         .doutb(tag_line_out));
 
     // Assignments for the cache block ram:
-    assign mem_en  = (ns == IDLE) || (|data_we) || re;
+    // 12: both BRAM ports are always enabled (writes are still gated by wea). Original:
+    //   mem_en = (ns == IDLE) || (|data_we) || re;
+    // `re` arrives late from the CPU (load data -> forward -> ALU address -> DMEM decode) and was the
+    // 50 MHz critical path into the BRAM enables. The extra reads are harmless: data_line_out /
+    // tag_line_out are only used when cs == IDLE and for the hit check, and during any stall the
+    // CPU holds its address, so a re-read returns the same line (or the line just refilled).
+    // ns and data_we depend only on registered state and the tag compare.
+    assign mem_en  = 1'b1;
     assign data_we = (ns == CWRITEB) ? 32'hFFFFFFFF :
                       {32{write_hit_hold}} & we_mask_hold;
     assign tag_we = (ns == CWRITEB) || (write_hit_hold);

@@ -1,4 +1,4 @@
-# jtag_boot.tcl - no-Linux bring-up of the 11 overlay (MIPS150 + GPU) on the PYNQ-Z2 over JTAG.
+# jtag_boot.tcl - no-Linux bring-up of the 12 overlay (mem_harden) on the PYNQ-Z2 over JTAG.
 # Board boot jumper must be on JTAG (power-cycled), so nothing runs on the ARM.
 #   xsct jtag_boot.tcl [bitfile] [ps7_init.tcl]
 # Steps (all on cable 1234-tulA / xc7z020 only - never the XUPV5):
@@ -8,8 +8,8 @@
 #   4. ps7_post_config     enable PS<->PL level shifters, release FCLK_RESETn
 # No ARM program is loaded; core 0 stays halted.
 set dir  [file dirname [file normalize [info script]]]
-set bld  [file normalize [file join $dir .. build mips_gpu]]
-set bit  [expr {[llength $argv] > 0 ? [lindex $argv 0] : "$bld/mips_gpu.bit"}]
+set bld  [file normalize [file join $dir .. build mem_harden]]
+set bit  [expr {[llength $argv] > 0 ? [lindex $argv 0] : "$bld/mem_harden.bit"}]
 set init [expr {[llength $argv] > 1 ? [lindex $argv 1] : "$bld/ps7_init.tcl"}]
 set CABLE {*1234-tulA*}
 
