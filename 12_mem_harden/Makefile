@@ -1,7 +1,8 @@
-# 11_mips_gpu: the cs150 MIPS150 system (CPU + I$/D$ + RequestController + GPU + proj150
-# PixelFeeder) on the PYNQ-Z2 through 10's rc_axi_fifo_adapter (HP0, fixed base 0x10000000,
-# 256 MiB identity window). CPU / caches / GPU / RC on FCLK1 50 MHz, AXI on FCLK0 100 MHz.
-# The CPU boots the gios BIOS from ROM and talks on the Pmod UART at 115200 (434 clk/bit).
+# 12_mem_harden: 11_mips_gpu's cs150 MIPS150 system (CPU + I$/D$ + RequestController + GPU +
+# proj150 PixelFeeder) on the PYNQ-Z2 via rc_axi_fifo_adapter (HP0, base 0x10000000), hardened:
+# PixelFeeder-first RC priority with the adapter caf prog_full backlog gate (from proj150), cache
+# BRAM enables off the critical path, JTAG DDR loader (jtag_load.tcl, hwtest/jtag_run.py).
+# CPU / caches / GPU / RC on FCLK1 50 MHz, AXI on FCLK0 100 MHz. gios on the Pmod UART, 115200.
 # Runs without Linux: JTAG boot (jtag_boot.tcl: ps7_init, fpga, ps7_post_config).
 #   make sim        simsys + simmix + simthru
 #   make simsys     whole system: gios boots from the bios_mem image to "> ", then lw/sw/sb, gs,
@@ -85,7 +86,6 @@ simthru:
 	@$(call MIX_RUN,2,2048,1,40,40,30,30) | tee -a sim/thru.log
 	@! grep -q "FAILED\|RECOVERY_DROP" sim/thru.log
 
-
 # 12: PixelFeeder read latency under a back-to-back write flood (MODE 3, pixf at display pace,
 # 1 line / 10 RC clk = 160 MB/s), 12's RequestController (pixf first + caf_backlog gate) against
 # 11's (sim/ref/RequestController_11.v). Two slave latency sets.
@@ -101,6 +101,7 @@ _priorun:
 	@iverilog -g2012 -o sim/tbprio.vvp -s tb_adapter_mixed $(call MIX_P,3,3000,1,$(R1),$(R2),$(B1),$(B2)) \
 	   -Ptb_adapter_mixed.WIN_AW=20 -Ptb_adapter_mixed.MEM_AW=21 $(MIX_SRCS) && \
 	 vvp -n sim/tbprio.vvp | grep -E "PIXF_LAT|TIME|PASSED|FAILED|TIMEOUT|RECOVERY_DROP" | tee -a sim/prio.log
+
 
 # 12: same-line race test (10's sim/tb_hazard.v + 10's fb_core, read from ../10_rc_50mhz,
 # unmodified) against 12's adapter: 3 seeds must PASS (no stale read); the control build,
