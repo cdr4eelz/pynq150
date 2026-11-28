@@ -1,7 +1,8 @@
 #!/bin/bash
-# run_stages.sh STAGE - GIOS command sequences (from proj150 hwtest) for 11_mips_gpu on the PYNQ-Z2
+# run_stages.sh STAGE - GIOS command sequences (from proj150 hwtest) for 12_mem_harden on the PYNQ-Z2
 # (UART log in hwtest/logs/). Port: gios_uart.py default (Pmod FT232R), override with PORT=.
-#   banner | dcache | icache | pixfeed | pixfeed_stress | pixfeed_isolate | gpu | elip | elipbig
+#   banner | dcache | icache | pixfeed | pixfeed_stress | pixfeed_isolate | gpu | gpu_stress | elip | elipbig
+#   (gs_check.py logs/X.log reports the PixelFeeder resync count, gs bits 23:16, per stage)
 #   LOGPFX=after_ ./run_stages.sh gpu   writes logs/after_gpu.log
 set -u; cd "$(dirname "$0")"; mkdir -p logs
 G="python3 ./gios_uart.py ${PORT:+--port $PORT} --log logs/${LOGPFX:-}$1.log"
@@ -39,6 +40,28 @@ case "$1" in
     $G --timeout 60 gs "pf 1" "gf 1" "hwcolor 00ff8040" "hwfill" "@sleep 1" gs "lw 10400000" "lw 10400c7c" "lw 10657c7c" \
        "lw 10400c80" "hwcolor 000000ff" "hwline 0 0 799 599" "@sleep 1" gs "lw 10400000" "lw 1052c640" "lw 1052c644" \
        "hwcolor 0000ff00" "hwelip 400 300 200 150" "@sleep 3" gs "lw 10496640" "lw 105c2640" "@sleep 5" gs ;;
+  gpu_stress)
+    # 12: GPU draw stress while frame 1 is shown: ROUNDS x (fill, 4 rects, 8 lines, 2 ellipses) queued
+    # to the GPU back to back, with CPU copy bursts (DDR reads+write-through stores) interleaved, so
+    # PixelFeeder, GPU and CPU all compete in the RequestController. Pass = the PixelFeeder resync
+    # count (gs bits 23:16) does not move and no fault '*' (checked by gs_check.py).
+    # Ends on a fixed picture for the HDMI capture: blue fill, white border rect, red X, green ellipse.
+    R=${ROUNDS:-8}; C=(gs "pf 1" "gf 1" "@sleep 1" gs)
+    for ((i = 0; i < R; i++)); do
+      C+=("hwcolor 00$(printf %02x $((i * 29 & 255)))8040" hwfill
+          "hwcolor 00ffff00" "hwrect 10 10 789 589" "hwcolor 0000ffff" "hwrect 100 100 699 499"
+          "hwcolor 00ff00ff" "hwrect 0 0 399 299" "hwcolor 00808080" "hwrect 400 300 799 599"
+          "copy 40000000 10210000 4000"
+          "hwcolor 00ffffff" "hwline 0 0 799 599" "hwline 799 0 0 599" "hwline 0 300 799 300" "hwline 400 0 400 599"
+          "hwline 0 0 799 0" "hwline 0 599 799 599" "hwline 0 0 0 599" "hwline 799 0 799 599"
+          "hwcolor 0000ff00" "hwelip 400 300 390 290" "hwcolor 00ff0000" "hwelip 400 300 150 100"
+          "copy 10210000 0 4000" gs)
+    done
+    C+=("hwcolor 000000ff" hwfill "hwcolor 00ffffff" "hwrect 20 20 779 579" "hwcolor 000000ff" "hwrect 24 24 775 575"
+        "hwcolor 00ff0000" "hwline 0 0 799 599" "hwline 799 0 0 599" "hwcolor 0000ff00" "hwelip 400 300 300 200"
+        "@sleep 3" gs "lw 10400000" "lw 1052c640" "lw 10414050" "@sleep 2" gs)
+    $G --timeout 180 "${C[@]}"
+    python3 gs_check.py logs/${LOGPFX:-}$1.log ;;
   elip|elipbig)
     # GPU ellipses (frame 1, hwelip) against the CPU swelip reference (frame 2): pixel reads at model
     # points + band checksums; prints PASS/FAIL. elipbig = the 399x299 ellipse alone.
@@ -46,5 +69,5 @@ case "$1" in
     mapfile -t C < <(python3 elip_check.py cmds $BIGARG)
     $G --timeout 90 "${C[@]}"
     python3 elip_check.py check logs/${LOGPFX:-}$1.log $BIGARG ;;
-  *) echo "usage: $0 banner|dcache|icache|pixfeed|pixfeed_stress|pixfeed_isolate|gpu|elip|elipbig"; exit 2 ;;
+  *) echo "usage: $0 banner|dcache|icache|pixfeed|pixfeed_stress|pixfeed_isolate|gpu|gpu_stress|elip|elipbig"; exit 2 ;;
 esac
